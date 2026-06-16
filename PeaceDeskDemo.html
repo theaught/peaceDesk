@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Velma2 · Call Center AI Demo</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #111827;
+  color: #1F2937;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ─── Top bar ─── */
+.top-bar {
+  background: #0B0B1A;
+  border-bottom: 1px solid #1F1F38;
+  padding: 0 20px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+  z-index: 10;
+}
+.top-logo {
+  display: flex; align-items: center; gap: 8px;
+  color: #A78BFA; font-weight: 700; font-size: 17px;
+}
+.top-logo svg { width: 26px; height: 26px; }
+.top-spacer { flex: 1; }
+.api-key-wrap { display: flex; align-items: center; gap: 8px; }
+.api-key-wrap label { color: #6B7280; font-size: 12px; white-space: nowrap; }
+.api-key-wrap input {
+  background: #1A1A2E; border: 1px solid #2D2D50;
+  border-radius: 6px; padding: 5px 11px;
+  color: #E5E7EB; font-size: 12px; width: 230px;
+  font-family: 'SF Mono', monospace;
+  transition: border-color 0.2s;
+}
+.api-key-wrap input:focus { outline: none; border-color: #7C3AED; }
+
+/* ─── Main 2-pane ─── */
+.main { flex: 1; display: flex; overflow: hidden; }
+
+/* ════════════════════════════════
+   LEFT: Agent Platform
+   ════════════════════════════════ */
+.agent-pane {
+  flex: 3; display: flex; flex-direction: column;
+  background: #F3F4F6; border-right: 2px solid #E5E7EB;
+  position: relative; overflow: hidden;
+  min-width: 0;
+}
+
+/* Popup overlay */
+.popup-container {
+  position: absolute; top: 100px; right: 10px;
+  display: flex; flex-direction: column; gap: 8px;
+  z-index: 200; pointer-events: none; width: 280px;
+  max-height: calc(100% - 110px); overflow: hidden;
+}
+.popup {
+  background: #fff; border-radius: 10px;
+  padding: 10px 14px; pointer-events: auto;
+  box-shadow: 0 8px 28px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.08);
+  border-left: 4px solid;
+  animation: popIn .35s cubic-bezier(.34,1.56,.64,1);
+  transition: opacity .25s, transform .25s;
+}
+.popup.out { opacity: 0; transform: translateX(14px); pointer-events: none; }
+@keyframes popIn {
+  from { opacity: 0; transform: translateX(16px) scale(.93); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+.popup.p-clip      { border-color: #6366F1; }
+.popup.p-behavior  { border-color: #F59E0B; }
+.popup.p-topic     { border-color: #10B981; }
+.popup.p-sentiment { border-color: #3B82F6; }
+.popup.p-summary   { border-color: #8B5CF6; }
+.popup.p-conv      { border-color: #EC4899; }
+.popup.p-role      { border-color: #F97316; }
+.popup.p-error     { border-color: #EF4444; }
+.popup.p-emotion   { border-color: #06B6D4; }
+.popup.p-deepfake  { border-color: #EF4444; background: #FEF2F2; }
+.popup.p-alert     { border-color: #EF4444; background: #FEF2F2; }
+.popup.p-alert .popup-kind { color: #EF4444; }
+.popup.p-alert .popup-title { color: #991B1B; }
+.popup-kind {
+  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .6px; color: #9CA3AF; margin-bottom: 3px;
+}
+.popup-title { font-size: 12px; font-weight: 600; color: #111827; line-height: 1.4; }
+.popup-sub   { font-size: 11px; color: #6B7280; margin-top: 2px; }
+
+/* ZD Header */
+.zd-header {
+  background: #1B3A4B; padding: 0 16px; height: 46px;
+  display: flex; align-items: center; gap: 14px; flex-shrink: 0;
+}
+.zd-logo { color: #79F2C0; font-weight: 800; font-size: 19px; letter-spacing: -.5px; }
+.zd-nav { display: flex; gap: 2px; }
+.zd-nav a {
+  color: #87BDD1; font-size: 12px; padding: 4px 10px;
+  border-radius: 5px; cursor: pointer; text-decoration: none;
+}
+.zd-nav a.active { background: rgba(121,242,192,.12); color: #79F2C0; }
+.zd-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.live-badge {
+  background: #FEE2E2; color: #DC2626; font-size: 9px;
+  font-weight: 800; padding: 2px 7px; border-radius: 4px;
+  letter-spacing: .5px; display: none;
+}
+.agent-status {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,.08); border-radius: 20px; padding: 3px 10px;
+}
+.sdot {
+  width: 7px; height: 7px; border-radius: 50%; background: #10B981;
+  transition: background .3s;
+}
+.sdot.busy { background: #EF4444; }
+.agent-status span { color: #D1D5DB; font-size: 11px; }
+.agent-av {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: linear-gradient(135deg,#667EEA,#764BA2);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 12px; font-weight: 700;
+}
+
+/* ZD layout */
+.zd-body { flex: 1; display: flex; overflow: hidden; }
+
+.zd-sidebar {
+  width: 200px; background: #fff;
+  border-right: 1px solid #E5E7EB;
+  display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0;
+}
+.sb-section { padding: 10px; border-bottom: 1px solid #F3F4F6; }
+.sb-title {
+  font-size: 10px; font-weight: 700; color: #9CA3AF;
+  text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px;
+}
+.tkt {
+  padding: 7px 8px; border-radius: 6px; cursor: pointer;
+  transition: background .12s; border-left: 3px solid transparent;
+}
+.tkt:hover { background: #F9FAFB; }
+.tkt.active { background: #EFF6FF; border-left-color: #3B82F6; }
+.tkt-name { font-size: 12px; font-weight: 600; color: #111827; }
+.tkt-prev {
+  font-size: 11px; color: #9CA3AF; margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;
+}
+.tkt-time { font-size: 10px; color: #D1D5DB; margin-top: 1px; }
+.badge {
+  display: inline-block; background: #EF4444; color: #fff;
+  font-size: 9px; padding: 1px 4px; border-radius: 8px; margin-left: 3px;
+}
+
+.zd-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* Call header */
+.call-hdr {
+  background: #fff; border-bottom: 1px solid #E5E7EB;
+  padding: 10px 18px; display: flex; align-items: center; gap: 14px; flex-shrink: 0;
+}
+.caller-info .cname { font-size: 15px; font-weight: 700; color: #111827; }
+.caller-info .csub  { font-size: 11px; color: #6B7280; margin-top: 1px; }
+.call-timer {
+  background: #FEF2F2; border: 1px solid #FECACA;
+  border-radius: 20px; padding: 3px 11px;
+  font-size: 12px; color: #EF4444; font-weight: 700; font-family: monospace;
+  transition: all .3s;
+}
+.call-timer.off { background: #F3F4F6; border-color: #E5E7EB; color: #9CA3AF; }
+.call-hdr-right { margin-left: auto; display: flex; gap: 6px; }
+.btn-sm {
+  padding: 5px 11px; border-radius: 6px; font-size: 11px;
+  font-weight: 600; cursor: pointer; border: none; transition: all .15s;
+}
+.btn-gray { background: #F3F4F6; color: #6B7280; }
+.btn-gray:hover { background: #E5E7EB; }
+.btn-red  { background: #FEE2E2; color: #DC2626; }
+.btn-red:hover  { background: #DC2626; color: #fff; }
+
+/* Content view */
+.zd-view { flex: 1; display: flex; overflow: hidden; }
+
+/* Transcript */
+.transcript-col {
+  flex: 1; display: flex; flex-direction: column;
+  overflow: hidden; padding: 14px 14px 14px 16px; gap: 10px;
+}
+.section-label {
+  font-size: 10px; font-weight: 700; color: #9CA3AF;
+  text-transform: uppercase; letter-spacing: .5px;
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+.progress-bar { flex: 1; height: 3px; background: #E5E7EB; border-radius: 2px; overflow: hidden; display: none; }
+.progress-fill { height: 100%; background: #7C3AED; border-radius: 2px; width: 100%; }
+
+.feed {
+  flex: 1; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.feed-empty {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  color: #D1D5DB; gap: 8px; text-align: center;
+}
+.feed-empty svg { width: 44px; height: 44px; opacity: .4; }
+.feed-empty p { font-size: 13px; }
+
+/* Clip messages */
+.clip-row { display: flex; gap: 7px; animation: slideL .28s ease-out; }
+@keyframes slideL { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:translateX(0)} }
+.clip-row.r { flex-direction: row-reverse; }
+.clip-av {
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 800; color: #fff;
+}
+.c0{background:#3B82F6} .c1{background:#8B5CF6} .c2{background:#EC4899} .c3{background:#F59E0B}
+.clip-bubble { max-width: 72%; }
+.clip-meta {
+  font-size: 10px; color: #9CA3AF; margin-bottom: 2px;
+  display: flex; align-items: center; gap: 5px;
+}
+.clip-row.r .clip-meta { justify-content: flex-end; }
+.emo-tag {
+  background: #EDE9FE; color: #7C3AED;
+  border-radius: 3px; padding: 0 4px; font-size: 9px; font-weight: 600;
+}
+.clip-text {
+  background: #fff; border: 1px solid #E5E7EB;
+  border-radius: 10px; padding: 7px 11px;
+  font-size: 12px; line-height: 1.5; color: #374151;
+}
+.clip-row.r .clip-text { background: #EFF6FF; border-color: #BFDBFE; }
+
+/* Insights panel */
+.insights-col {
+  width: 260px; border-left: 1px solid #E5E7EB;
+  background: #FAFAFA; display: flex; flex-direction: column;
+  overflow-y: auto; padding: 12px; gap: 8px; flex-shrink: 0;
+}
+.ins-hdr { display: flex; align-items: center; flex-shrink: 0; }
+.ins-title {
+  font-size: 10px; font-weight: 700; color: #9CA3AF;
+  text-transform: uppercase; letter-spacing: .5px;
+}
+.clr-btn {
+  margin-left: auto; background: none; border: 1px solid #E5E7EB;
+  color: #9CA3AF; border-radius: 4px; padding: 1px 6px;
+  font-size: 9px; cursor: pointer;
+}
+.clr-btn:hover { border-color: #9CA3AF; color: #6B7280; }
+.ins-empty { color: #D1D5DB; font-size: 11px; text-align: center; padding: 16px 0; }
+.ins-card {
+  background: #fff; border: 1px solid #E5E7EB;
+  border-radius: 7px; padding: 7px 9px;
+  border-left: 3px solid; animation: fadeUp .35s ease-out;
+}
+@keyframes fadeUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+.ins-card.ib { border-left-color: #F59E0B; }
+.ins-card.it { border-left-color: #10B981; }
+.ins-card.is { border-left-color: #3B82F6; }
+.ins-card.ic { border-left-color: #EC4899; }
+.ins-card.im { border-left-color: #8B5CF6; }
+.ins-card.ie { border-left-color: #06B6D4; }
+.ins-card.ia { border-left-color: #EF4444; background: #FEF2F2; }
+.ins-card.ia .ins-label { color: #EF4444; }
+.ins-card.ia .ins-val   { color: #991B1B; font-weight: 700; }
+.ins-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; color: #9CA3AF; margin-bottom: 3px; }
+.ins-val   { font-size: 11px; color: #374151; font-weight: 600; line-height: 1.4; }
+.ins-conf  { font-size: 10px; color: #9CA3AF; margin-top: 2px; }
+.conf-bar  { height: 3px; background: #F3F4F6; border-radius: 2px; margin-top: 3px; overflow: hidden; }
+.conf-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg,#A78BFA,#7C3AED); transition: width .6s ease; }
+.summary-body { font-size: 11px; color: #374151; line-height: 1.5; }
+
+
+/* ════════════════════════════════
+   RIGHT: Velma Controls
+   ════════════════════════════════ */
+.ctrl-pane {
+  flex: 2; background: #0B0B1A; display: flex;
+  flex-direction: column; overflow: hidden; min-width: 0;
+}
+.ctrl-hdr {
+  padding: 14px 18px; border-bottom: 1px solid #1A1A30;
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+.ctrl-hdr h2 { color: #E5E7EB; font-size: 15px; font-weight: 700; }
+.v-badge {
+  background: linear-gradient(135deg,#7C3AED,#4F46E5);
+  color: #fff; font-size: 10px; padding: 2px 8px;
+  border-radius: 10px; font-weight: 700;
+}
+.ctrl-body {
+  flex: 1; overflow-y: auto; padding: 16px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+
+/* Sections */
+.csec {
+  background: #12122A; border: 1px solid #1E1E40;
+  border-radius: 10px; padding: 14px;
+}
+.csec-title {
+  font-size: 10px; font-weight: 700; color: #7C6AEA;
+  text-transform: uppercase; letter-spacing: .5px;
+  margin-bottom: 12px; display: flex; align-items: center; gap: 5px;
+}
+.csec-title svg { flex-shrink: 0; }
+
+
+/* Mic button */
+.mic-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.mic-btn {
+  width: 74px; height: 74px; border-radius: 50%;
+  background: #0B1929; border: 2px solid #1E3A5F;
+  color: #60A5FA; cursor: pointer; display: flex;
+  align-items: center; justify-content: center; transition: all .2s;
+}
+.mic-btn:hover { border-color: #3B82F6; box-shadow: 0 0 18px rgba(59,130,246,.25); }
+.mic-btn.rec {
+  background: #1A0808; border-color: #EF4444; color: #EF4444;
+}
+.mic-btn svg { width: 34px; height: 34px; }
+.mic-lbl { color: #6B7280; font-size: 11px; }
+
+/* Visualizer */
+.viz {
+  height: 38px; background: #0B0B1A; border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  gap: 3px; padding: 0 10px; overflow: hidden; margin-top: 10px;
+}
+/* Bars are invisible until recording starts */
+.vb { width: 3px; background: #4F46E5; border-radius: 2px; height: 3px; opacity: 0; transition: opacity .3s; }
+.viz.active .vb { opacity: 1; }
+
+/* Divider */
+.ctrl-divider {
+  border: none; border-top: 1px solid #1E1E40; margin: 10px 0 8px;
+}
+
+/* File drop */
+.file-drop {
+  border: 2px dashed #2A2A50; border-radius: 8px;
+  padding: 16px; text-align: center; cursor: pointer;
+  transition: all .18s; position: relative;
+}
+.file-drop:hover, .file-drop.drag { border-color: #7C3AED; background: rgba(124,58,237,.04); }
+.file-drop input[type="file"] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.file-drop .fd-icon { font-size: 26px; margin-bottom: 5px; }
+.file-drop p { color: #6B7280; font-size: 11px; }
+.file-drop strong { color: #A78BFA; }
+.file-chosen {
+  background: rgba(124,58,237,.1); border: 1px solid #7C3AED;
+  border-radius: 7px; padding: 8px 10px;
+  display: flex; align-items: center; gap: 7px;
+  color: #C4B5FD; font-size: 11px; margin-top: 8px; display: none;
+}
+.file-chosen span { margin-left: auto; opacity: .6; }
+
+/* Action button */
+.act-btn {
+  width: 100%; padding: 10px; border: none; border-radius: 7px;
+  background: linear-gradient(135deg,#7C3AED,#4F46E5);
+  color: #fff; font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: all .18s;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  margin-top: 10px;
+}
+.act-btn:hover { background: linear-gradient(135deg,#6D28D9,#4338CA); box-shadow: 0 4px 14px rgba(124,58,237,.4); }
+.act-btn:disabled { opacity: .35; cursor: not-allowed; pointer-events: none; }
+
+/* Config checkboxes */
+.cfg-row { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; }
+.cfg-row input[type="checkbox"] { accent-color: #7C3AED; cursor: pointer; }
+.cfg-row label { font-size: 11px; color: #9CA3AF; cursor: pointer; }
+.cfg-row label:hover { color: #D1D5DB; }
+
+/* Status + log */
+.status-row {
+  display: flex; align-items: center; gap: 8px;
+  background: #0B0B1A; border-radius: 7px; padding: 8px 10px;
+}
+.sdot-sm {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  transition: background .3s;
+}
+.sdot-sm.idle       { background: #374151; }
+.sdot-sm.connecting { background: #F59E0B; }
+.sdot-sm.active     { background: #10B981; }
+.sdot-sm.done       { background: #3B82F6; }
+.sdot-sm.error      { background: #EF4444; }
+.status-txt { color: #9CA3AF; font-size: 11px; }
+
+.log-wrap { margin-top: 10px; }
+.log-lbl { font-size: 10px; color: #4B5563; margin-bottom: 5px; }
+.elog {
+  background: #060610; border-radius: 7px; padding: 7px;
+  font-family: 'SF Mono', 'Fira Code', monospace; font-size: 10px;
+  max-height: 170px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.le { display: flex; gap: 7px; line-height: 1.6; }
+.lt { color: #374151; flex-shrink: 0; }
+.lk-clip      { color: #818CF8; }
+.lk-behavior  { color: #FBBF24; }
+.lk-topic     { color: #34D399; }
+.lk-sentiment { color: #60A5FA; }
+.lk-summary   { color: #C084FC; }
+.lk-conv      { color: #F472B6; }
+.lk-role      { color: #FB923C; }
+.lk-error     { color: #F87171; }
+.lk-done      { color: #6EE7B7; }
+.lm { color: #4B5563; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2D2D50; border-radius: 3px; }
+
+/* ── Toggle switch ── */
+.tog { position:relative; display:inline-flex; align-items:center; cursor:pointer; }
+.tog input { opacity:0; width:0; height:0; position:absolute; }
+.tog-track {
+  width:28px; height:15px; background:#2A2A50; border-radius:8px;
+  transition:background .2s; flex-shrink:0; position:relative;
+}
+.tog input:checked ~ .tog-track { background:#7C3AED; }
+.tog-thumb {
+  position:absolute; left:2px; top:2px;
+  width:11px; height:11px; border-radius:50%;
+  background:#fff; transition:transform .2s;
+}
+.tog input:checked ~ .tog-track .tog-thumb { transform:translateX(13px); }
+
+/* ── Config list ── */
+.cfg-item {
+  display:flex; align-items:center; gap:8px;
+  padding:7px 9px; background:#0B0B1A; border-radius:6px;
+  border:1px solid #1E1E40; transition:border-color .15s;
+}
+.cfg-item.ci-active { border-color:#7C3AED; }
+.cfg-item-info { flex:1; min-width:0; }
+.cfg-item-name { font-size:11px; color:#D1D5DB; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cfg-item-sub  { font-size:10px; color:#4B5563; margin-top:1px; }
+.cfg-del { background:none; border:none; color:#2A2A50; font-size:13px; line-height:1; cursor:pointer; padding:0 1px; flex-shrink:0; transition:color .15s; }
+.cfg-del:hover { color:#6B7280; }
+</style>
+</head>
+<body>
+
+<!-- ── Top Bar ── -->
+<div class="top-bar">
+  <div class="top-logo">
+    <svg viewBox="0 0 26 26" fill="none">
+      <circle cx="13" cy="13" r="12" fill="#7C3AED" fill-opacity=".18"/>
+      <path d="M5 18 L9 10 L13 16 L17 8 L21 18" stroke="#A78BFA" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    Velma2 Demo
+  </div>
+  <div class="top-spacer"></div>
+  <div class="api-key-wrap">
+    <label>API Key</label>
+    <input type="password" id="apiKey" placeholder="Enter your API key…" autocomplete="off">
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ═══════════════════════════════════════
+       LEFT PANE — Call Center Agent Platform
+       ═══════════════════════════════════════ -->
+  <div class="agent-pane" id="agentPane">
+
+    <!-- Floating popup overlay -->
+    <div class="popup-container" id="popupContainer"></div>
+
+    <!-- Zendesk-style header -->
+    <div class="zd-header">
+      <div class="zd-logo">PeaceDesk</div>
+      <nav class="zd-nav">
+        <a class="active">Conversations</a>
+        <a>Tickets</a>
+        <a>Reports</a>
+      </nav>
+      <div class="zd-right">
+        <div class="live-badge" id="liveBadge">● LIVE</div>
+        <div class="agent-status">
+          <div class="sdot" id="agentDot"></div>
+          <span id="agentStatusTxt">Online</span>
+        </div>
+        <div class="agent-av">JT</div>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="zd-body">
+
+      <!-- Sidebar -->
+      <div class="zd-sidebar">
+        <div class="sb-section">
+          <div class="sb-title">Active</div>
+          <div class="tkt active">
+            <div class="tkt-name">Demo Call <span class="badge" id="callBadge" style="display:none">LIVE</span></div>
+            <div class="tkt-prev" id="tktPrev">Waiting for audio…</div>
+            <div class="tkt-time" id="tktTime">—</div>
+          </div>
+        </div>
+        <div class="sb-section">
+          <div class="sb-title">Queue</div>
+          <div class="tkt">
+            <div class="tkt-name">Maria S.</div>
+            <div class="tkt-prev">Billing inquiry…</div>
+            <div class="tkt-time">2m ago</div>
+          </div>
+          <div class="tkt">
+            <div class="tkt-name">Robert K.</div>
+            <div class="tkt-prev">Tech support…</div>
+            <div class="tkt-time">5m ago</div>
+          </div>
+          <div class="tkt">
+            <div class="tkt-name">Anna T.</div>
+            <div class="tkt-prev">Order cancel…</div>
+            <div class="tkt-time">9m ago</div>
+          </div>
+          <div class="tkt">
+            <div class="tkt-name">David R.</div>
+            <div class="tkt-prev">Account access…</div>
+            <div class="tkt-time">12m ago</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main column -->
+      <div class="zd-main">
+
+        <!-- Call header -->
+        <div class="call-hdr">
+          <div class="caller-info">
+            <div class="cname">Demo Call</div>
+            <div class="csub" id="callerSub">Ready — start analysis using the controls on the right</div>
+          </div>
+          <div class="call-timer off" id="callTimer">00:00</div>
+          <div class="call-hdr-right">
+            <button class="btn-sm btn-gray" onclick="clearAll()">Clear</button>
+            <button class="btn-sm btn-red" id="endBtn" style="display:none" onclick="endSession()">End Call</button>
+          </div>
+        </div>
+
+        <!-- Transcript + Insights -->
+        <div class="zd-view">
+
+          <div class="transcript-col">
+            <div class="section-label">
+              Transcript
+              <div class="progress-bar" id="progressBar">
+                <div class="progress-fill" id="progressFill"></div>
+              </div>
+            </div>
+            <div class="feed" id="feed">
+              <div class="feed-empty" id="feedEmpty">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                </svg>
+                <p>Transcript will appear here in real-time</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="insights-col" id="insightsCol">
+            <div class="ins-hdr">
+              <span class="ins-title">Velma Alerts</span>
+              <button class="clr-btn" onclick="clearInsights()">clear</button>
+            </div>
+            <div id="insightsBody">
+              <div class="ins-empty" id="insEmpty">Insights will appear as Velma analyzes the call</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       RIGHT PANE — Velma2 Controls
+       ═══════════════════════════════════════ -->
+  <div class="ctrl-pane">
+    <div class="ctrl-hdr">
+      <h2>Velma2</h2>
+      <span class="v-badge">API Controls</span>
+    </div>
+    <div class="ctrl-body">
+
+      <!-- Streaming section -->
+      <div class="csec">
+        <div class="csec-title">
+          <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+          Live Microphone
+        </div>
+        <div class="mic-wrap">
+          <button class="mic-btn" id="micBtn" onclick="toggleMic()">
+            <svg id="micIcon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+            </svg>
+          </button>
+          <div class="mic-lbl" id="micLbl">Click to start recording</div>
+        </div>
+        <div class="viz" id="viz"></div>
+
+      </div>
+
+      <!-- Config -->
+      <div class="csec">
+        <div class="csec-title">
+          <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+          Analysis Config
+        </div>
+        <div id="configList" style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px;"></div>
+
+        <div class="file-drop" id="cfgFileDrop" style="padding:8px 12px;">
+          <input type="file" id="cfgFileInput" accept="application/json,.json" onchange="addConfigFile(this)">
+          <p style="font-size:11px;margin:0;">+ Add <strong>.json</strong> config or <strong>drop file here</strong></p>
+        </div>
+
+        <hr class="ctrl-divider">
+
+        <div style="font-size:10px;font-weight:700;color:#7C6AEA;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">STT Signals</div>
+        <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <label class="tog"><input type="checkbox" id="sttDiarization" checked onchange="setStt('speaker_diarization',this.checked)"><div class="tog-track"><div class="tog-thumb"></div></div></label>
+            <span style="font-size:11px;color:#9CA3AF;">Speaker Diarization</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <label class="tog"><input type="checkbox" id="sttEmotion" onchange="setStt('emotion_signal',this.checked)"><div class="tog-track"><div class="tog-thumb"></div></div></label>
+            <span style="font-size:11px;color:#9CA3AF;">Emotion Signal</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <label class="tog"><input type="checkbox" id="sttAccent" onchange="setStt('accent_signal',this.checked)"><div class="tog-track"><div class="tog-thumb"></div></div></label>
+            <span style="font-size:11px;color:#9CA3AF;">Accent Signal</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <label class="tog"><input type="checkbox" id="sttDeepfake" onchange="setStt('deepfake_signal',this.checked)"><div class="tog-track"><div class="tog-thumb"></div></div></label>
+            <span style="font-size:11px;color:#9CA3AF;">Deepfake Signal</span>
+          </div>
+        </div>
+
+        <hr class="ctrl-divider">
+
+        <div style="display:flex;align-items:center;margin-bottom:8px;">
+          <span style="font-size:10px;font-weight:700;color:#7C6AEA;text-transform:uppercase;letter-spacing:.5px;">Behavior Presets</span>
+          <button id="presetRefreshBtn" onclick="loadPresets()" title="Refresh presets" style="margin-left:auto;background:none;border:1px solid #2A2A50;color:#6B7280;border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='#7C3AED';this.style.color='#A78BFA'" onmouseout="this.style.borderColor='#2A2A50';this.style.color='#6B7280'">↻</button>
+        </div>
+        <div id="presetList" style="display:flex;flex-direction:column;gap:3px;max-height:180px;overflow-y:auto;padding-right:2px;">
+          <div style="color:#4B5563;font-size:11px;">Loading presets…</div>
+        </div>
+      </div>
+
+      <!-- Status & Log -->
+      <div class="csec">
+        <div class="csec-title">
+          <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          Status &amp; Log
+        </div>
+        <div class="status-row">
+          <div class="sdot-sm idle" id="statusDot"></div>
+          <span class="status-txt" id="statusTxt">Idle — enter API key to begin</span>
+        </div>
+        <div class="log-wrap">
+          <div class="log-lbl">Event Log</div>
+          <div class="elog" id="elog">
+            <div class="le"><span class="lt">—</span><span class="lk-done">[ready]</span><span class="lm">Velma2 demo loaded. Enter your API key and select a mode.</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+/* ─────────────────────────────────────────────────────────
+   Constants
+───────────────────────────────────────────────────────── */
+const WS_BASE = 'wss://modulate-developer-apis.com/api/velma-2-streaming';
+
+const MINIMAL_CONFIG = {
+  conversation_types: [], participant_roles: [], behaviors: [],
+  stt: { speaker_diarization: true, emotion_signal: false, accent_signal: false, deepfake_signal: false, pii_phi_tagging: false },
+  produce_topics: false, produce_topic_sentiments: false, produce_summary: false,
+};
+
+const FRAUD_CONFIG = {"conversation_types":[{"conversation_type_uuid":"11111111-1111-4111-8111-111111111017","name":"AI Agent Customer Support Call","short_description":"Any Customer Support Call with an AI agent","detailed_description":"customer-supportprofessional"},{"conversation_type_uuid":"11111111-1111-4111-8111-111111111018","name":"AI Agent Interview Monitoring","short_description":"Any interview call with an AI interviewer","detailed_description":"business-operationsprofessional"},{"conversation_type_uuid":"11111111-1111-4111-8111-111111111025","name":"Business Contractor and Vendor Logisitics","short_description":"Any call where a business coordinates with a contracted third party","detailed_description":"business-operationsprofessional"},{"conversation_type_uuid":"11111111-1111-4111-8111-111111111028","name":"Consumer Technical Support","short_description":"Any call to assist a customer in using a business's software or website","detailed_description":"customer-supportitprofessional"},{"conversation_type_uuid":"11111111-1111-4111-8111-111111111035","name":"Demo Sales Call","short_description":"Product demo call","detailed_description":"professionalsales"},{"conversation_type_uuid":"11111111-1111-4111-8111-111111111003","name":"Enterprise IT support","short_description":"Any call to assist an employee in accessing or managing internal IT resources","detailed_description":"business-operationsitprofessional"},{"conversation_type_uuid":"11111111-1111-4111-8111-111111111027","name":"Finance Account Support","short_description":"Any call to support the configuration, management, or cancellation of financial accounts","detailed_description":"customer-supportprofessional"},{"conversation_type_uuid":"11111111-1111-4111-8111-111111111022","name":"Food Delivery Logistics","short_description":"Coordinating the delivery of food to a location","detailed_description":"consumer-service-meetingprofessional"},{"conversation_type_uuid":"11111111-1111-4111-8111-111111111021","name":"General Contractor Visitation Coordination","short_description":"Any call where there is a contracted party coordinating with a client for the means of delivering a service","detailed_description":"consumer-service-meetingprofessional"},{"conversation_type_uuid":"11111111-1111-4111-8111-111111111008","name":"General Customer Support Call","short_description":"Any call where a customer is contacting a business to assist them with the use of a service or goods provided by the business","detailed_description":"customer-supportprofessional"},{"conversation_type_uuid":"11111111-1111-4111-8111-111111111036","name":"Inbound Sales Call","short_description":"A call coming from the customer to a business to purchase goods or services","detailed_description":""},{"conversation_type_uuid":"11111111-1111-4111-8111-111111111033","name":"Outbound Sales Call","short_description":"Any call from a business to their clients or consumer for the purpose of selling them goods or services","detailed_description":"professionalsales"},{"conversation_type_uuid":"11111111-1111-4111-8111-111111111031","name":"Retail Customer Support Call","short_description":"A call to coordinate the delivery or transfer of goods to a consumer","detailed_description":"customer-supportprofessionalretail"},{"conversation_type_uuid":"11111111-1111-4111-8111-111111111032","name":"Sales Contract/Deal Negotiation Call","short_description":"A call to negotiate the terms of a customer agreement","detailed_description":"professionalsales"},{"conversation_type_uuid":"11111111-1111-4111-8111-111111111034","name":"Sales Pipeline Logistics Call","short_description":"A call with the purpose of moving a prospect to the next part of the sales pipeline","detailed_description":"professionalsales"},{"conversation_type_uuid":"11111111-1111-4111-8111-111111111019","name":"Shipping Package Delivery Logistics","short_description":"Any call to coordinate the delivery of a package with the delivery driver","detailed_description":"consumer-service-meetingprofessional"}],"participant_roles":[{"participant_role_uuid":"22222222-2222-4222-8222-222222222017","name":"Customer","short_description":"The recipient of a service or good","detailed_description":""},{"participant_role_uuid":"22222222-2222-4222-8222-222222222012","name":"Customer Service Representative","short_description":"A representative from a business who is assisting a customer with an issue they are having","detailed_description":""},{"participant_role_uuid":"22222222-2222-4222-8222-222222222014","name":"Insurance Agent","short_description":"A customer support representative from an insurance company","detailed_description":""},{"participant_role_uuid":"22222222-2222-4222-8222-222222222004","name":"Support Specialist","short_description":"Someone who works with employees or contractors to solve problems with things like IT, logistics, or communication","detailed_description":""},{"participant_role_uuid":"22222222-2222-4222-8222-222222222015","name":"Interview Candidate","short_description":"Someone who is being interview for a job","detailed_description":""},{"participant_role_uuid":"22222222-2222-4222-8222-222222222016","name":"Interviewer","short_description":"A person giving an interview","detailed_description":""},{"participant_role_uuid":"22222222-2222-4222-8222-222222222005","name":"Employee","short_description":"someone who is employed by company and exists in professional settings","detailed_description":""},{"participant_role_uuid":"22222222-2222-4222-8222-222222222011","name":"Gig worker","short_description":"A contractor delivering a service for someone","detailed_description":""},{"participant_role_uuid":"22222222-2222-4222-8222-222222222013","name":"Salesperson","short_description":"A person who is attempting to sell a good or service to another person","detailed_description":""}],"behaviors":[{"behavior_uuid":"33333333-3333-4333-8333-033333333036","name":"Inappropriate Speech","short_description":"Unprofessional or unsuitable spoken content.","detailed_description":"To qualify, the speech must be characterized by one of the following examples: 1. Language that Creates a Hostile Environment. 2. Unprofessional and Low-Credibility Phrases. 3. Non-Inclusive and Outdated Terminology."},{"behavior_uuid":"33333333-3333-4333-8333-033333333040","name":"Issue Resolved","short_description":"Customer's problem successfully addressed.","detailed_description":"to qualify, the speech must meet the following criteria: the speech must be close to the end of the provided transcript; the speech must feature an affirmation by either participant that the main subject of the call has been resolved."},{"behavior_uuid":"33333333-3333-4333-8333-033333333007","name":"Off-topic Discussion","short_description":"Conversation largely unrelated to call purpose.","detailed_description":"Detection of instances where the conversation is steered to topics that are SEVERELY off-topic and have absolutely no connection to the job, industry, or professional context."},{"behavior_uuid":"33333333-3333-4333-8333-033333333006","name":"Service Churn","short_description":"Customer decides to cancel an ongoing service.","detailed_description":"to qualify, the speech must feature assertions that the speaker would like to cancel a service or subscription."},{"behavior_uuid":"33333333-3333-4333-8333-033333333042","name":"Sexual Harassment","short_description":"Unwanted sexualized speech or advances.","detailed_description":"to qualify, the speech must meet any two of the criteria involving solicitations for romantic or sexual activities."},{"behavior_uuid":"33333333-3333-4333-8333-033333333041","name":"Threat-based harassment","short_description":"Targeted threats toward an individual in a professional context.","detailed_description":"To qualify, the speech must feature descriptions of violent or potentially harmful actions the speaker intends to carry out."},{"behavior_uuid":"33333333-3333-4333-8333-033333333002","name":"Vishing","short_description":"Attempts to elicit sensitive information through deceptive voice interactions.","detailed_description":"to qualify, speech must contain solicitations for personally identifiable information or assertions of authorization to have such information."},{"behavior_uuid":"33333333-3333-4333-8333-033333333020","name":"AI Agent Manipulation","short_description":"Attempts to coerce an AI into unintended behavior.","detailed_description":"to qualify, the speech must meet two of the criteria involving prompting LLMs or issuing override instructions."},{"behavior_uuid":"33333333-3333-4333-8333-033333333019","name":"Inapropriate AI Agent Content","short_description":"AI-generated speech unsuitable for professional contexts.","detailed_description":"To qualify, the contents must meet any criteria involving descriptions of sex acts, violent acts, gore, bodily harm, drug use, or harmful stereotypes."},{"behavior_uuid":"33333333-3333-4333-8333-033333333033","name":"Unaddressed Question","short_description":"Failure to adequately respond to a posed question.","detailed_description":"To qualify, the speech must occur in response to a direct question, contain vague language or word salad, and not feature honest admissions of lack of knowledge."},{"behavior_uuid":"33333333-3333-4333-8333-033333333003","name":"Account Impersonation","short_description":"Fraudulent attempt to access another's account.","detailed_description":"to qualify, the speech must meet two criteria involving references to account information and speech patterns indicating access to an account that doesn't belong to the speaker."},{"behavior_uuid":"33333333-3333-4333-8333-033333333016","name":"Bargaining Manipulation","short_description":"Social engineering through cajoling and persuasion.","detailed_description":"to qualify, the speech must feature an admission of a past refusal without resolution, or a solicitation to circumvent a process that benefits the speaker."},{"behavior_uuid":"33333333-3333-4333-8333-033333333008","name":"Coercion Manipulation","short_description":"Social engineering through intimidation or threats.","detailed_description":"To qualify, the speech must contain a threatened or implied negative consequence tied to compliance and at least one additional qualifying signal."},{"behavior_uuid":"33333333-3333-4333-8333-033333333001","name":"Complaints","short_description":"Customer expresses dissatisfaction or grievance.","detailed_description":"to qualify, the speech must fit at least two criteria involving requests to file a complaint or descriptions of a negative experience."},{"behavior_uuid":"33333333-3333-4333-8333-033333333010","name":"Feigned Ignorance","short_description":"Pretending towards ignorance to garner fraudulent sympathy.","detailed_description":"To qualify, there must be at least four instances where the speaker asserts ignorance while simultaneously proposing suggestions demonstrating understanding inconsistent with that ignorance."},{"behavior_uuid":"33333333-3333-4333-8333-033333333035","name":"Issue Not Resolved","short_description":"Customer's problem remains unresolved.","detailed_description":"to qualify, the speech must be close to the end of the transcript and feature an affirmation that the initial request has or could not be resolved."},{"behavior_uuid":"33333333-3333-4333-8333-033333333034","name":"Refund or Credit Issued","short_description":"Confirmation that financial remediation occurred.","detailed_description":"to qualify, the speech must feature an assertion that a credit or refund has been issued or that cash has been given back."},{"behavior_uuid":"33333333-3333-4333-8333-033333333004","name":"Action Plan Created","short_description":"Explicit agreement on next steps or follow-up.","detailed_description":"To qualify, the speech must feature a verbal agreement from the prospect to schedule another meeting at a specific date and time."},{"behavior_uuid":"33333333-3333-4333-8333-033333333005","name":"Cancelled Order","short_description":"Customer cancels a previously placed order.","detailed_description":"to qualify, the speech must feature assertions that the speaker would like to cancel an order or delivery."},{"behavior_uuid":"33333333-3333-4333-8333-033333333009","name":"Return Fraud Attempt","short_description":"Fraudulent product return behavior.","detailed_description":"To qualify the speech must contain references to a package or delivery and evidence of social engineering manipulation to obtain a credit, refund, or new item."}],"stt":{"speaker_diarization":true,"emotion_signal":false,"accent_signal":false,"deepfake_signal":false,"pii_phi_tagging":false},"produce_topics":true,"produce_topic_sentiments":true,"produce_summary":true};
+
+/* ─────────────────────────────────────────────────────────
+   State
+───────────────────────────────────────────────────────── */
+let recording     = false;
+let mediaRecorder = null;
+let ws            = null;
+let audioCtx      = null;
+let analyser      = null;
+let vizRaf        = null;
+let timerIv       = null;
+let t0            = null;   // call start epoch
+let customConfigs    = [];        // [{name, data, sub}]
+let activeConfigKey  = 'default'; // 'default' | numeric index string | null (presets only)
+let availablePresets = [];
+let activePresets    = new Set();
+let spkLabels     = {};     // speaker_id -> display label
+let sttOverrides  = { speaker_diarization: true, emotion_signal: false, accent_signal: false, deepfake_signal: false };
+
+/* ─────────────────────────────────────────────────────────
+   Visualizer
+───────────────────────────────────────────────────────── */
+const vizEl = document.getElementById('viz');
+const N_BARS = 22;
+const bars = [];
+for (let i = 0; i < N_BARS; i++) {
+  const b = document.createElement('div');
+  b.className = 'vb';
+  b.style.height = '3px';
+  vizEl.appendChild(b);
+  bars.push(b);
+}
+
+function startViz(an) {
+  vizEl.classList.add('active');
+  const data = new Uint8Array(an.frequencyBinCount);
+  const step = Math.floor(an.frequencyBinCount / N_BARS);
+  function tick() {
+    an.getByteFrequencyData(data);
+    for (let i = 0; i < N_BARS; i++) {
+      const v = data[i * step] / 255;
+      bars[i].style.height = Math.max(3, v * 34) + 'px';
+      bars[i].style.background = `hsl(${240 + v * 55}, 75%, ${38 + v * 28}%)`;
+    }
+    vizRaf = requestAnimationFrame(tick);
+  }
+  tick();
+}
+
+function stopViz() {
+  if (vizRaf) { cancelAnimationFrame(vizRaf); vizRaf = null; }
+  vizEl.classList.remove('active');
+  bars.forEach(b => { b.style.height = '3px'; b.style.background = '#4F46E5'; });
+}
+
+/* ─────────────────────────────────────────────────────────
+   UI helpers
+───────────────────────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+
+function setStatus(state, txt) {
+  $('statusDot').className = 'sdot-sm ' + state;
+  $('statusTxt').textContent = txt;
+}
+
+function log(kind, msg) {
+  const el = $('elog');
+  const ts = t0 ? ((Date.now() - t0) / 1000).toFixed(1) + 's' : new Date().toTimeString().slice(0,8);
+  const row = document.createElement('div');
+  row.className = 'le';
+  row.innerHTML = `<span class="lt">${esc(ts)}</span><span class="lk-${kind}">[${kind}]</span><span class="lm">${esc(msg)}</span>`;
+  el.appendChild(row);
+  el.scrollTop = el.scrollHeight;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+
+function apiKey()  { return $('apiKey').value.trim(); }
+
+function buildConfig() {
+  const idx  = parseInt(activeConfigKey);
+  const base = activeConfigKey === null  ? MINIMAL_CONFIG
+             : !isNaN(idx) && customConfigs[idx] ? customConfigs[idx].data
+             : FRAUD_CONFIG;
+  const cfg  = JSON.parse(JSON.stringify(base));
+  activePresets.forEach(id => cfg.behaviors.push(`preset:${id}`));
+  cfg.stt = { ...cfg.stt, ...sttOverrides };
+  return JSON.stringify(cfg);
+}
+
+function setStt(key, val) {
+  sttOverrides[key] = val;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Config list
+───────────────────────────────────────────────────────── */
+function configSub(cfg) {
+  if (!cfg) return '20 behaviors · 16 conv. types · 9 roles · diarization · topics · summary';
+  const b  = (cfg.behaviors          || []).length;
+  const ct = (cfg.conversation_types || []).length;
+  const pr = (cfg.participant_roles  || []).length;
+  const ex = [cfg.produce_topics && 'topics', cfg.produce_summary && 'summary',
+              cfg.stt?.speaker_diarization && 'diarization'].filter(Boolean).join(' · ');
+  return `${b} behaviors · ${ct} conv. types · ${pr} roles${ex ? ' · '+ex : ''}`;
+}
+
+function renderConfigList() {
+  const el = $('configList');
+  el.innerHTML = '';
+
+  const items = [
+    { key: 'default', name: 'FraudConfig (default)', sub: configSub(null), removable: false },
+    ...customConfigs.map((c, i) => ({ key: String(i), name: c.name, sub: c.sub, removable: true })),
+  ];
+
+  items.forEach(item => {
+    const isActive = activeConfigKey === item.key;
+    const row = document.createElement('div');
+    row.className = 'cfg-item' + (isActive ? ' ci-active' : '');
+    row.innerHTML = `
+      <label class="tog" title="Toggle this config on / off">
+        <input type="checkbox" ${isActive ? 'checked' : ''}
+               onchange="selectConfig('${esc(item.key)}', this.checked)">
+        <div class="tog-track"><div class="tog-thumb"></div></div>
+      </label>
+      <div class="cfg-item-info">
+        <div class="cfg-item-name">${esc(item.name)}</div>
+        <div class="cfg-item-sub">${esc(item.sub)}</div>
+      </div>
+      ${item.removable ? `<button class="cfg-del" onclick="removeConfig(${item.key})" title="Remove">✕</button>` : ''}
+    `;
+    el.appendChild(row);
+  });
+
+  // Status line below the list
+  const status = document.createElement('div');
+  status.style.cssText = 'font-size:10px;color:#4B5563;padding:3px 2px;';
+  status.textContent = activeConfigKey === null
+    ? '⚡ Presets only — no config file active'
+    : '✓ Config active · presets will be appended';
+  el.appendChild(status);
+}
+
+function selectConfig(key, on) {
+  // Turning off the active config → null (presets only); turning on any config deactivates others
+  activeConfigKey = on ? key : null;
+  renderConfigList();
+  const name = activeConfigKey === null ? 'none (presets only)'
+             : key === 'default'        ? 'FraudConfig (default)'
+             : customConfigs[parseInt(key)]?.name;
+  log('done', `Active config: ${name}`);
+}
+
+function removeConfig(idx) {
+  const removed = customConfigs.splice(idx, 1)[0];
+  if (activeConfigKey === String(idx)) {
+    activeConfigKey = 'default';
+    log('done', `Removed "${removed.name}" — reverted to FraudConfig.`);
+  } else {
+    // re-index active key if it was after the removed item
+    const active = parseInt(activeConfigKey);
+    if (!isNaN(active) && active > idx) activeConfigKey = String(active - 1);
+    log('done', `Removed "${removed.name}".`);
+  }
+  $('cfgFileInput').value = '';
+  renderConfigList();
+}
+
+function addConfigFile(input) {
+  const file = (input.files || input)[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const badBehaviors = (data.behaviors || []).filter(b => typeof b === 'string' && !b.startsWith('preset:'));
+      if (badBehaviors.length) {
+        const fix = confirm(
+          `"${file.name}" has ${badBehaviors.length} behavior entry/entries that are bare UUID strings (not full objects or preset: references).\n\nThese will be stripped automatically. Continue?`
+        );
+        if (!fix) { $('cfgFileInput').value = ''; return; }
+        data.behaviors = (data.behaviors || []).filter(b => typeof b !== 'string' || b.startsWith('preset:'));
+      }
+      customConfigs.push({ name: file.name, data, sub: configSub(data) });
+      activeConfigKey = String(customConfigs.length - 1);
+      $('cfgFileInput').value = '';
+      renderConfigList();
+      log('done', `Config loaded: ${file.name}${badBehaviors.length ? ` (${badBehaviors.length} invalid behavior entries stripped)` : ''}`);
+    } catch {
+      alert('Invalid JSON — could not parse config file.');
+      input.value = '';
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* ─────────────────────────────────────────────────────────
+   Presets
+───────────────────────────────────────────────────────── */
+async function loadPresets() {
+  const key = apiKey();
+  const el = $('presetList');
+
+  if (!key) {
+    el.innerHTML = '<div style="color:#4B5563;font-size:11px;">Enter an API key to load presets.</div>';
+    return;
+  }
+
+  $('presetRefreshBtn').textContent = '…';
+  $('presetRefreshBtn').disabled = true;
+  el.innerHTML = '<div style="color:#4B5563;font-size:11px;">Loading…</div>';
+
+  try {
+    const res = await fetch('https://modulate-developer-apis.com/api/velma-2-batch/list-presets', {
+      headers: { 'X-API-Key': key },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    availablePresets = Array.isArray(data) ? data : (data.presets || []);
+    renderPresets();
+  } catch (err) {
+    el.innerHTML = `<div style="color:#F87171;font-size:11px;">Failed to load presets: ${esc(err.message)}</div>`;
+  } finally {
+    $('presetRefreshBtn').textContent = '↻';
+    $('presetRefreshBtn').disabled = false;
+  }
+}
+
+function renderPresets() {
+  const el = $('presetList');
+  if (!availablePresets.length) {
+    el.innerHTML = '<div style="color:#4B5563;font-size:11px;">No presets available.</div>';
+    return;
+  }
+  el.innerHTML = '';
+  availablePresets.forEach(p => {
+    const id = p.identifier || p.id || '';
+    const name = p.name || id;
+    const desc = p.short_description || p.detailed_description || '';
+    const row = document.createElement('div');
+    row.className = 'cfg-row';
+    row.style.cssText = 'align-items:flex-start;padding:3px 7px;background:#0B0B1A;border-radius:5px;border:1px solid #1E1E40;';
+    row.innerHTML = `
+      <input type="checkbox" id="preset_${esc(id)}" ${activePresets.has(id) ? 'checked' : ''}
+             onchange="togglePreset('${esc(id)}', this.checked)" style="margin-top:1px;flex-shrink:0;">
+      <label for="preset_${esc(id)}" style="cursor:pointer;flex:1;">
+        <div style="font-size:11px;color:#D1D5DB;font-weight:600;">${esc(name)}</div>
+        ${desc ? `<div style="font-size:10px;color:#4B5563;margin-top:1px;line-height:1.4;">${esc(desc)}</div>` : ''}
+      </label>
+    `;
+    el.appendChild(row);
+  });
+}
+
+function togglePreset(id, on) {
+  if (on) activePresets.add(id);
+  else activePresets.delete(id);
+}
+
+function fmtMs(ms) {
+  if (ms == null) return '?';
+  const s = Math.floor(ms / 1000);
+  return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+}
+
+function fmtSize(b)  { return b < 1048576 ? (b/1024).toFixed(0)+'KB' : (b/1048576).toFixed(1)+'MB'; }
+
+/* ─────────────────────────────────────────────────────────
+   Call timer & session state
+───────────────────────────────────────────────────────── */
+function startSession() {
+  t0 = Date.now();
+  $('callTimer').classList.remove('off');
+  $('endBtn').style.display = '';
+  $('liveBadge').style.display = '';
+  $('callBadge').style.display = '';
+  $('agentDot').classList.add('busy');
+  $('agentStatusTxt').textContent = 'On Call';
+  $('callerSub').textContent = 'Call in progress — Velma2 analyzing…';
+  $('progressBar').style.display = '';
+  timerIv = setInterval(() => {
+    const s = Math.floor((Date.now() - t0) / 1000);
+    $('callTimer').textContent = `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  }, 500);
+}
+
+function endSessionUI() {
+  clearInterval(timerIv); timerIv = null;
+  $('callTimer').classList.add('off');
+  $('endBtn').style.display = 'none';
+  $('liveBadge').style.display = 'none';
+  $('callBadge').style.display = 'none';
+  $('agentDot').classList.remove('busy');
+  $('agentStatusTxt').textContent = 'Online';
+  $('progressBar').style.display = 'none';
+}
+
+/* ─────────────────────────────────────────────────────────
+   Popup system
+───────────────────────────────────────────────────────── */
+function showPopup(type, title, sub) {
+  const c = $('popupContainer');
+  while (c.children.length >= 4) dismiss(c.firstElementChild);
+  const p = document.createElement('div');
+  p.className = `popup p-${type}`;
+  p.innerHTML = `
+    <div class="popup-kind">${esc(type)}</div>
+    <div class="popup-title">${esc(title)}</div>
+    ${sub ? `<div class="popup-sub">${esc(sub)}</div>` : ''}
+  `;
+  c.appendChild(p);
+  setTimeout(() => dismiss(p), 5500);
+}
+
+function dismiss(p) {
+  if (!p || !p.parentNode) return;
+  p.classList.add('out');
+  setTimeout(() => p.remove(), 280);
+}
+
+/* ─────────────────────────────────────────────────────────
+   Transcript rendering
+───────────────────────────────────────────────────────── */
+function addClip(clip) {
+  const fe = $('feedEmpty');
+  if (fe) fe.style.display = 'none';
+
+  const spkLabel = clip.speaker_label ?? '1';
+  const spkNum   = parseInt(spkLabel) || 1;
+  const isRight  = (spkNum - 1) % 2 !== 0;
+  const color    = `c${(spkNum - 1) % 4}`;
+  const label    = spkLabels[spkLabel] || `Speaker ${spkLabel}`;
+  const ts      = clip.start_ms != null ? fmtMs(clip.start_ms) : '';
+
+  // Build tag row for transcript bubble
+  let tags = '';
+  if (clip.emotion)  tags += `<span class="emo-tag">${esc(clip.emotion)}</span>`;
+  if (clip.deepfake_score != null) {
+    const pct = Math.round(clip.deepfake_score * 100);
+    tags += `<span class="emo-tag" style="background:#FEE2E2;color:#DC2626;">deepfake ${pct}%</span>`;
+  }
+
+  const row = document.createElement('div');
+  row.className = `clip-row ${isRight ? 'r' : ''}`;
+  row.innerHTML = `
+    <div class="clip-av ${color}">${esc(label.charAt(0).toUpperCase())}</div>
+    <div class="clip-bubble">
+      <div class="clip-meta">${esc(label)}${ts ? ' · ' + ts : ''}${tags}</div>
+      <div class="clip-text">${esc(clip.text || '')}</div>
+    </div>
+  `;
+  $('feed').appendChild(row);
+  $('feed').scrollTop = 99999;
+
+  $('tktPrev').textContent = (clip.text || '').slice(0, 50);
+  $('tktTime').textContent = 'Just now';
+
+  // Emotion popup
+  if (clip.emotion) {
+    showPopup('emotion', `Emotion: ${clip.emotion}`, `${label} · ${ts}`);
+    addInsight('ie', `Emotion — ${label}`, clip.emotion, null);
+    log('emotion', `${label}: ${clip.emotion}`);
+  }
+
+  // Deepfake popup — always show if the field is present
+  if (clip.deepfake_score != null) {
+    const pct = Math.round(clip.deepfake_score * 100);
+    const risk = clip.deepfake_score >= 0.5 ? 'deepfake' : 'alert';
+    showPopup(risk, `⚠ Deepfake Signal: ${pct}%`, `${label} · ${ts}`);
+    addInsight('ia', '⚠ Deepfake Signal', `${pct}% — ${label}`, clip.deepfake_score);
+    log('deepfake', `${label}: ${pct}% deepfake score`);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   Insights panel
+───────────────────────────────────────────────────────── */
+function addInsight(cls, label, value, confidence) {
+  const empty = $('insEmpty');
+  if (empty) empty.style.display = 'none';
+
+  const c = Math.round((confidence ?? 0) * 100);
+  const card = document.createElement('div');
+  card.className = `ins-card ${cls}`;
+  card.innerHTML = `
+    <div class="ins-label">${esc(label)}</div>
+    <div class="ins-val">${esc(value)}</div>
+    ${confidence != null ? `
+      <div class="ins-conf">${c}% confidence</div>
+      <div class="conf-bar"><div class="conf-fill" style="width:${c}%"></div></div>
+    ` : ''}
+  `;
+  $('insightsBody').appendChild(card);
+}
+
+/* ─────────────────────────────────────────────────────────
+   UUID → name lookups (against active config)
+───────────────────────────────────────────────────────── */
+function activeConfig() {
+  const idx = parseInt(activeConfigKey);
+  return activeConfigKey === null        ? MINIMAL_CONFIG
+       : !isNaN(idx) && customConfigs[idx] ? customConfigs[idx].data
+       : FRAUD_CONFIG;
+}
+
+function lookupConvType(uuid) {
+  const match = (activeConfig().conversation_types || []).find(c => c.conversation_type_uuid === uuid);
+  return match ? match.name : null;
+}
+
+function lookupRole(uuid) {
+  const match = (activeConfig().participant_roles || []).find(r => r.participant_role_uuid === uuid);
+  return match ? match.name : null;
+}
+
+function lookupBehavior(uuid) {
+  const match = (activeConfig().behaviors || []).find(b => b.behavior_uuid === uuid);
+  return match ? match.name : null;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Central event handler (streaming + batch share this)
+───────────────────────────────────────────────────────── */
+function handleEvent(ev) {
+  const { type } = ev;
+
+  if (type === 'clip') {
+    const clip = ev.clip;
+    addClip(clip);
+    const spkLabel = clip.speaker_label ?? '?';
+    const spk      = spkLabels[spkLabel] || `Speaker ${spkLabel}`;
+    const prev     = (clip.text || '').slice(0, 55);
+    showPopup('clip', `${spk}: "${prev}"`, null);
+    log('clip', `[${fmtMs(clip.start_ms)}] spk=${spkLabel} → ${(clip.text||'').slice(0,70)}`);
+    return;
+  }
+
+  if (type === 'conversation_type') {
+    const p = ev.pick || {};
+    const label = p.label || p.type || p.conversation_type
+      || (p.conversation_type_uuid && lookupConvType(p.conversation_type_uuid))
+      || (p.conversation_type_uuid ? `Type ${p.conversation_type_uuid.slice(0,8)}…` : 'Unknown type');
+    addInsight('ic', 'Conversation Type', label, p.confidence);
+    showPopup('conv', `Type: ${label}`, p.reasoning ? p.reasoning.slice(0,80) : null);
+    log('conv', `${label} (${Math.round((p.confidence||0)*100)}%)`);
+    return;
+  }
+
+  if (type === 'participant_role') {
+    const p = ev.pick || {};
+    const sid = p.speaker_label ?? p.speaker_id ?? '1';
+    const role = p.role || p.label || p.participant_role
+      || (p.participant_role_uuid && lookupRole(p.participant_role_uuid))
+      || `Role`;
+    spkLabels[sid] = role;
+    addInsight('ic', `Speaker ${sid} Role`, role, p.confidence);
+    showPopup('role', `Role: ${role}`, `Speaker ${sid}`);
+    log('role', `Spk${sid}: ${role}`);
+    return;
+  }
+
+  if (type === 'behavior_detection') {
+    const d    = ev.detection || {};
+    const name = d.behavior_name || d.behavior || d.label
+      || (d.behavior_uuid && lookupBehavior(d.behavior_uuid))
+      || (d.behavior_uuid ? `Behavior ${d.behavior_uuid.slice(0,8)}…` : 'Unknown behavior');
+    const conf = d.confidence ?? d.score;
+    const confTxt = conf != null ? `${Math.round(conf * 100)}% confidence` : null;
+
+    const HIGH_RISK = new Set([
+      'Vishing', 'Account Impersonation', 'Return Fraud Attempt',
+      'Feigned Ignorance', 'AI Agent Manipulation', 'Coercion Manipulation',
+      'Bargaining Manipulation', 'Threat-based harassment', 'Sexual Harassment',
+      'Inapropriate AI Agent Content',
+    ]);
+    const isAlert = HIGH_RISK.has(name);
+
+    addInsight(isAlert ? 'ia' : 'ib', isAlert ? `⚠ ${name}` : name, confTxt || '', conf);
+    showPopup(isAlert ? 'alert' : 'behavior', `${isAlert ? '⚠ ' : ''}${name}`, confTxt);
+    log('behavior', `${name}${conf != null ? ' (' + Math.round(conf*100) + '%)' : ''}`);
+    return;
+  }
+
+  if (type === 'topics') {
+    (ev.topics || []).forEach(t => {
+      const label = t.label || t.topic || t.name || JSON.stringify(t).slice(0,40);
+      addInsight('it', 'Topic', label, t.confidence);
+      showPopup('topic', `Topic: ${label}`, null);
+      log('topic', label);
+    });
+    return;
+  }
+
+  if (type === 'topic_sentiment') {
+    const ts = ev.topic_sentiment || {};
+    const topic = ts.topic || ts.label || '?';
+    const sent  = ts.sentiment || ts.label || '?';
+    addInsight('is', `Sentiment: ${topic}`, sent, ts.confidence);
+    showPopup('sentiment', `${topic}`, `Sentiment: ${sent}`);
+    log('sentiment', `${topic}: ${sent}`);
+    return;
+  }
+
+  if (type === 'summary') {
+    const text = ev.text || '';
+    const empty = $('insEmpty');
+    if (empty) empty.style.display = 'none';
+    const card = document.createElement('div');
+    card.className = 'ins-card im';
+    card.innerHTML = `<div class="ins-label">Summary</div><div class="summary-body">${esc(text)}</div>`;
+    $('insightsBody').appendChild(card);
+    showPopup('summary', 'Summary', text.slice(0,90) + (text.length > 90 ? '…' : ''));
+    log('summary', text.slice(0, 100));
+    return;
+  }
+
+  if (type === 'done') {
+    const dur = ev.duration_ms;
+    log('done', `Complete. Duration: ${dur != null ? (dur/1000).toFixed(1)+'s' : '?'}`);
+    setStatus('done', 'Analysis complete');
+    $('callerSub').textContent = `Analysis complete · ${dur != null ? (dur/1000).toFixed(1)+'s' : ''}`;
+    endSessionUI();
+    return;
+  }
+
+  if (type === 'error') {
+    const msg = ev.error || 'Unknown error';
+    showPopup('error', 'Error', msg.slice(0,100));
+    log('error', msg);
+    setStatus('error', msg.slice(0,60));
+    endSessionUI();
+    return;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   STREAMING helpers
+───────────────────────────────────────────────────────── */
+function openWS(key) {
+  const socket = new WebSocket(`${WS_BASE}?api_key=${encodeURIComponent(key)}`);
+  socket.binaryType = 'arraybuffer';
+  socket.onmessage = e => {
+    if (typeof e.data !== 'string') return;
+    try { handleEvent(JSON.parse(e.data)); } catch { /* ignore */ }
+  };
+  socket.onerror = () => handleEvent({ type: 'error', error: 'WebSocket connection error' });
+  socket.onclose = e => {
+    if (e.code !== 1000) {
+      handleEvent({ type: 'error', error: `WebSocket closed: ${e.code} ${e.reason||''}` });
+    }
+    ws = null;
+    stopMicUI();
+  };
+  return socket;
+}
+
+/* ─────────────────────────────────────────────────────────
+   STREAMING: microphone
+───────────────────────────────────────────────────────── */
+async function toggleMic() {
+  if (recording) { stopMic(); } else { await startMic(); }
+}
+
+async function startMic() {
+  const key = apiKey();
+  if (!key) { alert('Enter your API key first.'); return; }
+
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (err) {
+    setStatus('error', 'Mic access denied: ' + err.message);
+    log('error', err.message);
+    return;
+  }
+
+  clearAll();
+  startSession();
+  setStatus('connecting', 'Connecting to Velma2 Streaming…');
+  log('done', 'Microphone granted. Opening WebSocket…');
+
+  // Audio visualizer
+  audioCtx  = new AudioContext();
+  const src = audioCtx.createMediaStreamSource(stream);
+  analyser  = audioCtx.createAnalyser();
+  analyser.fftSize = 256;
+  src.connect(analyser);
+  startViz(analyser);
+
+  ws = openWS(key);
+
+  ws.onopen = () => {
+    setStatus('active', 'Streaming microphone to Velma2…');
+    log('done', 'Connected. Sending config…');
+    ws.send(buildConfig());
+
+    // Pick best supported mimeType
+    const mimeType = ['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/ogg']
+      .find(m => MediaRecorder.isTypeSupported(m)) || '';
+
+    const rec = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+    mediaRecorder = rec;
+    rec.ondataavailable = async e => {
+      if (e.data && e.data.size > 0 && ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(await e.data.arrayBuffer());
+      }
+    };
+    rec.start(200);
+
+    recording = true;
+    $('micBtn').classList.add('rec');
+    $('micLbl').textContent = 'Recording — click to stop';
+    $('micIcon').innerHTML = `<rect x="8" y="8" width="8" height="8" rx="1.5" fill="currentColor"/>`;
+  };
+}
+
+function stopMic() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+    mediaRecorder.stream.getTracks().forEach(t => t.stop());
+  }
+  mediaRecorder = null;
+  if (audioCtx) { audioCtx.close(); audioCtx = null; }
+  stopViz();
+
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(''); // EOF signal
+    log('done', 'Sent EOF — waiting for final results…');
+    setStatus('connecting', 'Processing final results…');
+  }
+  stopMicUI();
+}
+
+function stopMicUI() {
+  recording = false;
+  $('micBtn').classList.remove('rec');
+  $('micLbl').textContent = 'Click to start recording';
+  $('micIcon').innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>`;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Drag & drop for config zone
+───────────────────────────────────────────────────────── */
+const cDrop = $('cfgFileDrop');
+cDrop.addEventListener('dragover',  e => { e.preventDefault(); cDrop.classList.add('drag'); });
+cDrop.addEventListener('dragleave', () => cDrop.classList.remove('drag'));
+cDrop.addEventListener('drop', e => {
+  e.preventDefault();
+  cDrop.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (!f || !f.name.endsWith('.json')) { alert('Please drop a .json file.'); return; }
+  addConfigFile([f]);
+});
+
+/* ─────────────────────────────────────────────────────────
+   Clear / End
+───────────────────────────────────────────────────────── */
+function clearAll() {
+  $('feed').innerHTML = '';
+  const ph = document.createElement('div');
+  ph.className = 'feed-empty'; ph.id = 'feedEmpty';
+  ph.innerHTML = `<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:44px;height:44px;opacity:.4"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg><p>Transcript will appear here in real-time</p>`;
+  $('feed').appendChild(ph);
+  clearInsights();
+  $('popupContainer').innerHTML = '';
+  spkLabels = {};
+  $('tktPrev').textContent = 'Waiting for audio…';
+  $('tktTime').textContent = '—';
+}
+
+function clearInsights() {
+  $('insightsBody').innerHTML = '<div class="ins-empty" id="insEmpty">Insights will appear as Velma analyzes the call</div>';
+}
+
+function endSession() {
+  if (recording) {
+    stopMic(); // sends EOF internally
+  } else if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send('');
+    ws = null;
+  }
+  endSessionUI();
+}
+
+renderConfigList();
+loadPresets();
+</script>
+</body>
+</html>

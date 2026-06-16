@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PeaceDesk — Quick Start Guide</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #F7F6F3;
+    color: #1a1a1a;
+    line-height: 1.65;
+    padding: 0 0 4rem;
+  }
+
+  /* Hero */
+  .hero {
+    background: #1E1B4B;
+    color: white;
+    padding: 3rem 2rem 2.5rem;
+    text-align: center;
+  }
+  .hero-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.85);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-bottom: 1rem;
+  }
+  .hero h1 {
+    font-size: 2.2rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5rem;
+  }
+  .hero p {
+    font-size: 1.05rem;
+    color: rgba(255,255,255,0.7);
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* Layout */
+  .container {
+    max-width: 740px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+
+  /* Section headers */
+  .section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #7C6FCD;
+    margin-bottom: 0.4rem;
+    margin-top: 2.5rem;
+  }
+  .section-title {
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 1.25rem;
+  }
+
+  /* Steps */
+  .steps { display: flex; flex-direction: column; gap: 1rem; }
+  .step {
+    display: flex;
+    gap: 1rem;
+    background: white;
+    border: 0.5px solid #E0DDD6;
+    border-radius: 12px;
+    padding: 1.1rem 1.25rem;
+    align-items: flex-start;
+  }
+  .step-num {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #EEF0FC;
+    color: #534AB7;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+  }
+  .step-content h3 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 3px;
+  }
+  .step-content p {
+    font-size: 14px;
+    color: #555;
+  }
+  .step-content .tip {
+    margin-top: 8px;
+    font-size: 13px;
+    background: #F4F3FF;
+    color: #534AB7;
+    border-left: 2px solid #7C6FCD;
+    padding: 6px 10px;
+    border-radius: 0 6px 6px 0;
+  }
+
+  /* Layout diagram */
+  .layout-diagram {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+  .pane {
+    background: white;
+    border: 0.5px solid #E0DDD6;
+    border-radius: 12px;
+    padding: 1rem 1.1rem;
+  }
+  .pane-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #888;
+    margin-bottom: 0.6rem;
+  }
+  .pane-item {
+    font-size: 13.5px;
+    color: #333;
+    padding: 5px 0;
+    border-bottom: 0.5px solid #F0EEE9;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .pane-item:last-child { border-bottom: none; }
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* Alerts color key */
+  .color-key { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0.5rem; }
+  .color-pill {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+
+  /* Toggles */
+  .toggles-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .toggle-card {
+    background: white;
+    border: 0.5px solid #E0DDD6;
+    border-radius: 10px;
+    padding: 0.8rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .toggle-card .name { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+  .toggle-card .desc { font-size: 12px; color: #777; }
+  .badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    flex-shrink: 0;
+  }
+  .badge-on { background: #E1F5EE; color: #0F6E56; }
+  .badge-off { background: #F1EFE8; color: #5F5E5A; }
+
+  /* Troubleshoot */
+  .trouble-table { width: 100%; border-collapse: collapse; }
+  .trouble-table th {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #888;
+    text-align: left;
+    padding: 6px 12px;
+    background: #F1EFE8;
+  }
+  .trouble-table th:first-child { border-radius: 8px 0 0 0; }
+  .trouble-table th:last-child { border-radius: 0 8px 0 0; }
+  .trouble-table td {
+    font-size: 13.5px;
+    padding: 10px 12px;
+    border-bottom: 0.5px solid #EDEBE4;
+    vertical-align: top;
+  }
+  .trouble-table tr:last-child td { border-bottom: none; }
+  .trouble-table td:first-child { color: #1a1a1a; font-weight: 500; }
+  .trouble-table td:last-child { color: #555; }
+
+  /* Share box */
+  .share-box {
+    background: #1E1B4B;
+    color: white;
+    border-radius: 14px;
+    padding: 1.5rem 1.75rem;
+    margin-top: 2rem;
+  }
+  .share-box h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; }
+  .share-box p { font-size: 14px; color: rgba(255,255,255,0.7); }
+  .checklist { list-style: none; margin-top: 0.75rem; display: flex; flex-direction: column; gap: 6px; }
+  .checklist li {
+    font-size: 14px;
+    color: rgba(255,255,255,0.85);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .check-icon {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 520px) {
+    .layout-diagram, .toggles-grid { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 1.7rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-badge">Quick Start Guide</div>
+  <h1>PeaceDesk</h1>
+  <p>Live call analysis, powered by Velma2. Here's everything you need to get started.</p>
+</div>
+
+<div class="container">
+
+  <!-- Before you begin -->
+  <p class="section-label">Before you begin</p>
+  <p class="section-title">Opening the app</p>
+
+  <div style="background: white; border: 0.5px solid #E0DDD6; border-radius: 12px; padding: 1.1rem 1.25rem; margin-bottom: 1.25rem;">
+    <p style="font-size: 14px; color: #333;">
+      Don't open the file by double-clicking it — your browser won't allow microphone access that way.
+      Instead, run this command in the same folder, then visit <strong>http://localhost:8000/velma2-demo.html</strong> in Chrome or Edge:
+    </p>
+    <div style="background: #1E1B4B; color: #A5B4FC; font-family: monospace; font-size: 13px; padding: 10px 14px; border-radius: 8px; margin-top: 10px;">
+      python3 -m http.server
+    </div>
+  </div>
+
+  <!-- Screen layout -->
+  <p class="section-label">What you'll see</p>
+  <p class="section-title">Screen layout</p>
+
+  <div class="layout-diagram">
+    <div class="pane">
+      <div class="pane-title">Left — call view</div>
+      <div class="pane-item"><span class="dot" style="background:#5DCAA5;"></span>Live transcript</div>
+      <div class="pane-item"><span class="dot" style="background:#7F77DD;"></span>Velma Alerts panel</div>
+      <div class="pane-item"><span class="dot" style="background:#E24B4A;"></span>Pop-up notifications</div>
+    </div>
+    <div class="pane">
+      <div class="pane-title">Right — controls</div>
+      <div class="pane-item"><span class="dot" style="background:#378ADD;"></span>API key field</div>
+      <div class="pane-item"><span class="dot" style="background:#EF9F27;"></span>Config &amp; presets</div>
+      <div class="pane-item"><span class="dot" style="background:#888780;"></span>Signal toggles</div>
+    </div>
+  </div>
+
+  <!-- Setup steps -->
+  <p class="section-label">Setup</p>
+  <p class="section-title">Get ready in 4 steps</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <h3>Enter your API key</h3>
+        <p>Paste your Velma2 API key into the <strong>API Key</strong> field in the top bar. The field has a placeholder — just replace it.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <h3>Pick a config</h3>
+        <p>The <strong>FraudConfig</strong> is ready to go by default. You can also drag and drop your own <code>.json</code> config file onto the upload area. Only one config can be active at a time.</p>
+        <div class="tip">No config selected? The app runs in presets-only mode — minimal analysis using only the presets you choose.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <h3>Choose your signals</h3>
+        <p>Four optional enrichments. Toggle only what you need — extras slow things down.</p>
+        <div style="margin-top: 10px;" class="toggles-grid">
+          <div class="toggle-card">
+            <div><div class="name">Speaker labels</div><div class="desc">Tells speakers apart</div></div>
+            <span class="badge badge-on">On</span>
+          </div>
+          <div class="toggle-card">
+            <div><div class="name">Emotion</div><div class="desc">Tags emotional tone</div></div>
+            <span class="badge badge-off">Off</span>
+          </div>
+          <div class="toggle-card">
+            <div><div class="name">Accent</div><div class="desc">Detects accent</div></div>
+            <span class="badge badge-off">Off</span>
+          </div>
+          <div class="toggle-card">
+            <div><div class="name">Deepfake</div><div class="desc">Synthetic voice score</div></div>
+            <span class="badge badge-off">Off</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <h3>Add presets (optional)</h3>
+        <p>Presets are extra behavior detectors. Check the ones you want, then click the refresh icon (↻) if the list doesn't load.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Running a session -->
+  <p class="section-label">During a call</p>
+  <p class="section-title">Running a session</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num" style="background:#E1F5EE; color:#0F6E56;">▶</div>
+      <div class="step-content">
+        <h3>Start</h3>
+        <p>Click the <strong>microphone button</strong>. Allow mic access when prompted. The status dot turns green and the call timer begins. The mic button turns red while recording.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num" style="background:#FAEEDA; color:#854F0B;">⏸</div>
+      <div class="step-content">
+        <h3>End the call</h3>
+        <p>Click <strong>End Call</strong> in the call header. The app sends a final signal to the API and waits for any remaining results (like a summary) before closing.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num" style="background:#EEF0FC; color:#534AB7;">⟳</div>
+      <div class="step-content">
+        <h3>Reset between runs</h3>
+        <p>The <strong>Clear</strong> button wipes the transcript and alerts panel without ending an active session.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reading results -->
+  <p class="section-label">Understanding results</p>
+  <p class="section-title">Alert card colors</p>
+
+  <div class="color-key" style="margin-bottom: 1.5rem;">
+    <span class="color-pill" style="background:#FAD7E6; color:#993556;">Conversation type</span>
+    <span class="color-pill" style="background:#FAC775; color:#854F0B;">Behavior flagged</span>
+    <span class="color-pill" style="background:#C0DD97; color:#3B6D11;">Topic detected</span>
+    <span class="color-pill" style="background:#B5D4F4; color:#185FA5;">Sentiment</span>
+    <span class="color-pill" style="background:#CECBF6; color:#3C3489;">Summary</span>
+    <span class="color-pill" style="background:#9FE1CB; color:#085041;">Emotion</span>
+    <span class="color-pill" style="background:#F7C1C1; color:#A32D2D;">⚠ High-risk</span>
+  </div>
+  <p style="font-size: 14px; color: #555; margin-bottom: 2rem;">High-risk behaviors — like vishing or account impersonation — appear in red with a ⚠ warning. Confidence scores show as a percentage bar where available.</p>
+
+  <!-- Troubleshooting -->
+  <p class="section-label">Need help?</p>
+  <p class="section-title">Common issues</p>
+
+  <div style="background: white; border: 0.5px solid #E0DDD6; border-radius: 12px; overflow: hidden; margin-bottom: 1rem;">
+    <table class="trouble-table">
+      <thead>
+        <tr>
+          <th>What you're seeing</th>
+          <th>What to try</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Mic button does nothing</td>
+          <td>You're opening the file directly — use the local server command above instead</td>
+        </tr>
+        <tr>
+          <td>Presets say "Failed to load"</td>
+          <td>Your API key is missing or incorrect</td>
+        </tr>
+        <tr>
+          <td>Transcript feels slow</td>
+          <td>Normal — the API waits for natural pauses. Turn off Speaker Labels to speed it up.</td>
+        </tr>
+        <tr>
+          <td>Conversation type shows as a long code</td>
+          <td>The API returned a type not in your config — common in presets-only mode</td>
+        </tr>
+        <tr>
+          <td>No results after stopping</td>
+          <td>Check the Event Log at the bottom of the right panel for connection errors</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Sharing -->
+  <div class="share-box">
+    <h3>Sharing the app</h3>
+    <p>Send the <code>.html</code> file directly — it's fully self-contained. Recipients need:</p>
+    <ul class="checklist">
+      <li><span class="check-icon">✓</span> Their own API key (they enter it in the API Key field)</li>
+      <li><span class="check-icon">✓</span> Chrome or Edge (recommended)</li>
+      <li><span class="check-icon">✓</span> To open via a local server or HTTPS — not by double-clicking the file</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>
